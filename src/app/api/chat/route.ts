@@ -30,7 +30,7 @@ export async function POST(req) {
   }));
 
   const result = streamText({
-    model: google("gemini-3.6-flash", { apiKey }),
+    model: google("gemini-3.6-flash"),
     system: SYSTEM_PROMPT,
     messages: modelMessages,
   });
