@@ -143,6 +143,7 @@ export default function TailorPage() {
   const { messages = [], sendMessage, regenerate, clearError, error, status, stop } = useChat();
   const [input, setInput] = useState("");
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const isLoading = status === "streaming" || status === "submitted";
 
   const examplePrompts = [
@@ -152,8 +153,20 @@ export default function TailorPage() {
   ];
 
   const containerRef = useRef(null);
+  const wasLoadingRef = useRef(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [newSinceScrollUp, setNewSinceScrollUp] = useState(false);
+
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading && !error) {
+      setIsSuccess(true);
+      const successTimeout = window.setTimeout(() => setIsSuccess(false), 800);
+      wasLoadingRef.current = isLoading;
+      return () => window.clearTimeout(successTimeout);
+    }
+
+    wasLoadingRef.current = isLoading;
+  }, [error, isLoading]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -309,12 +322,25 @@ export default function TailorPage() {
           disabled={isLoading}
         />
 
+        {/* 150ms ease-out makes hover feel immediate without being jumpy; 250ms ease-in-out lets loading register without feeling sluggish. */}
         <button
           type="submit"
-          className={`px-4 py-2 rounded-md text-white ${isLoading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}`}
+          className={`send-button rounded-md px-4 py-2 text-white ${error ? "send-button-error send-button-shake" : isLoading ? "send-button-loading" : "send-button-idle"}`}
           disabled={isLoading}
         >
-          Send
+          <span className={`send-button-width ${isLoading ? "send-button-width-loading" : ""}`}>
+            <span className={`send-button-state ${isLoading ? "send-button-state-hidden" : "send-button-state-visible"}`}>
+              {error ? "Retry" : isSuccess ? "" : "Send"}
+            </span>
+            <span className={`send-button-spinner ${isLoading ? "send-button-state-visible" : "send-button-state-hidden"}`} aria-hidden="true">
+              <span className="send-spinner-ring" />
+            </span>
+            <span className={`send-button-check ${isSuccess && !isLoading && !error ? "send-button-state-visible" : "send-button-state-hidden"}`} aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="m4 10 4 4 8-8" />
+              </svg>
+            </span>
+          </span>
         </button>
 
         {isLoading && (
@@ -323,6 +349,130 @@ export default function TailorPage() {
           </button>
         )}
       </form>
+
+      <style jsx>{`
+        .send-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 5rem;
+          overflow: hidden;
+          transition: transform 150ms ease-out;
+        }
+
+        .send-button:hover:not(:disabled),
+        .send-button:focus-visible:not(:disabled) {
+          transform: scale(1.03);
+        }
+
+        .send-button:focus-visible {
+          outline: 2px solid #93c5fd;
+          outline-offset: 2px;
+        }
+
+        .send-button-idle {
+          background: #2563eb;
+        }
+
+        .send-button-idle:hover:not(:disabled) {
+          background: #1d4ed8;
+        }
+
+        .send-button-loading {
+          background: #9ca3af;
+        }
+
+        .send-button-error {
+          background: #dc2626;
+        }
+
+        .send-button-error:hover:not(:disabled) {
+          background: #b91c1c;
+        }
+
+        .send-button-shake {
+          animation: send-button-shake 300ms ease-in-out;
+        }
+
+        .send-button-width {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 1.25rem;
+          max-width: 3.5rem;
+          overflow: hidden;
+          transition: max-width 225ms ease-in-out;
+        }
+
+        .send-button-width-loading {
+          max-width: 1.25rem;
+        }
+
+        .send-button-state,
+        .send-button-spinner,
+        .send-button-check {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          white-space: nowrap;
+          transition: transform 225ms ease-in-out, opacity 225ms ease-in-out;
+        }
+
+        .send-button-state-hidden {
+          position: absolute;
+          opacity: 0;
+          transform: translateY(0.35rem) scale(0.96);
+          pointer-events: none;
+        }
+
+        .send-button-state-visible {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+
+        .send-button-check svg {
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+
+        .send-spinner-ring {
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid rgba(255, 255, 255, 0.45);
+          border-top-color: white;
+          border-radius: 9999px;
+          animation: send-spinner 700ms linear infinite;
+        }
+
+        @keyframes send-button-shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-3px); }
+          75% { transform: translateX(3px); }
+        }
+
+        @keyframes send-spinner {
+          to { transform: rotate(360deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .send-button,
+          .send-button:hover:not(:disabled),
+          .send-button:focus-visible:not(:disabled),
+          .send-button-state,
+          .send-button-spinner,
+          .send-button-check,
+          .send-button-width {
+            transition: none;
+            transform: none;
+          }
+
+          .send-button-shake,
+          .send-spinner-ring {
+            animation: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }
