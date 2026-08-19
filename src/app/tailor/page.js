@@ -140,9 +140,16 @@ function ToolAnalyzeJobMatchCard({ part, onRetry }) {
 }
 
 export default function TailorPage() {
-  const { messages = [], sendMessage, status, stop } = useChat();
+  const { messages = [], sendMessage, regenerate, clearError, error, status, stop } = useChat();
   const [input, setInput] = useState("");
+  const [isRetrying, setIsRetrying] = useState(false);
   const isLoading = status === "streaming" || status === "submitted";
+
+  const examplePrompts = [
+    "I'm a frontend developer applying for a React role",
+    "I have 5 years in backend, applying for a senior role",
+    "I'm a product designer applying to a startup",
+  ];
 
   const containerRef = useRef(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
@@ -183,43 +190,61 @@ export default function TailorPage() {
       </header>
 
       <main ref={containerRef} className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.map((m, messageIndex) => {
-          const parts = m.parts && Array.isArray(m.parts) ? m.parts : null;
-
-          return (
-            <div key={m.id || `message-${messageIndex}`} className="space-y-2">
-              {parts ? (
-                parts.map((part, partIndex) => {
-                  if (part.type === "text") {
-                    return <MessageBubble key={`${m.id || messageIndex}-text-${partIndex}`} message={m} text={part.text} />;
-                  }
-
-                  if (part.type === "tool-analyzeJobMatch") {
-                    return (
-                      <ToolAnalyzeJobMatchCard
-                        key={`${m.id || messageIndex}-tool-${partIndex}`}
-                        part={part}
-                        onRetry={() => sendMessage({ text: "Re-run the job match analysis." })}
-                      />
-                    );
-                  }
-
-                  return null;
-                })
-              ) : (
-                <MessageBubble message={m} />
-              )}
+        {messages.length === 0 ? (
+          <div className="flex min-h-full flex-col items-center justify-center py-12 text-center">
+            <p className="text-lg font-medium text-gray-800">Start by describing the job you&apos;re applying for</p>
+            <div className="mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
+              {examplePrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => setInput(prompt)}
+                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow-sm transition-colors hover:border-blue-300 hover:text-blue-700"
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
-          );
-        })}
+          </div>
+        ) : (
+          messages.map((m, messageIndex) => {
+            const parts = m.parts && Array.isArray(m.parts) ? m.parts : null;
+
+            return (
+              <div key={m.id || `message-${messageIndex}`} className="space-y-2">
+                {parts ? (
+                  parts.map((part, partIndex) => {
+                    if (part.type === "text") {
+                      return <MessageBubble key={`${m.id || messageIndex}-text-${partIndex}`} message={m} text={part.text} />;
+                    }
+
+                    if (part.type === "tool-analyzeJobMatch") {
+                      return (
+                        <ToolAnalyzeJobMatchCard
+                          key={`${m.id || messageIndex}-tool-${partIndex}`}
+                          part={part}
+                          onRetry={() => sendMessage({ text: "Re-run the job match analysis." })}
+                        />
+                      );
+                    }
+
+                    return null;
+                  })
+                ) : (
+                  <MessageBubble message={m} />
+                )}
+              </div>
+            );
+          })
+        )}
 
         {isAssistantThinking && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg max-w-[40%]">
-              <div className="flex items-center space-x-2">
-                <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse inline-block"></span>
-                <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse inline-block"></span>
-                <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse inline-block"></span>
+            <div className="min-h-28 w-full max-w-md rounded-lg bg-gray-100 px-4 py-4 animate-pulse">
+              <div className="space-y-3">
+                <div className="h-3 w-11/12 rounded bg-gray-200"></div>
+                <div className="h-3 w-4/5 rounded bg-gray-200"></div>
+                <div className="h-3 w-1/2 rounded bg-gray-200"></div>
               </div>
             </div>
           </div>
@@ -242,11 +267,36 @@ export default function TailorPage() {
         </div>
       )}
 
+      {error && (
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow-sm">
+            <span>Something went wrong sending that message.</span>
+            <button
+              type="button"
+              onClick={async () => {
+                if (isRetrying) return;
+                setIsRetrying(true);
+                try {
+                  await regenerate();
+                } finally {
+                  setIsRetrying(false);
+                }
+              }}
+              disabled={isRetrying}
+              className="shrink-0 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+            >
+              {isRetrying ? "Retrying..." : "Retry"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <form
         className="border-t p-4 flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (!input.trim()) return;
+          clearError();
           sendMessage({ text: input });
           setInput("");
         }}
