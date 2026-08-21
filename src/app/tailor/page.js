@@ -317,6 +317,7 @@ export default function TailorPage() {
         <input
           className="flex-1 px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-400"
           placeholder="Paste job description and ask for a tailored cover letter..."
+          aria-label="Paste job description and ask for a tailored cover letter"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={isLoading}

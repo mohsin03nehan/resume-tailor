@@ -18,8 +18,7 @@ export default function Nav() {
   return (
     <nav className="border-b border-slate-200 bg-white shadow-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="truncate text-lg font-bold text-slate-900 sm:text-xl">
-          Resume Tailor
+        <Link href="/" aria-label="Resume Tailor home" className="truncate text-lg font-bold text-slate-900 sm:text-xl">          Resume Tailor
         </Link>
 
         <button
