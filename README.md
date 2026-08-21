@@ -20,6 +20,14 @@ You can start editing the page by modifying `app/page.js`. The page auto-updates
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## 3D Model Viewer
+
+The `/viewer` route provides a drag-and-drop GLB viewer with a Leva configurator for material color, metalness, roughness, and wireframe, built with React Three Fiber and drei.
+
+The Canvas is lazy-loaded via `next/dynamic` with `ssr: false`, so the Three.js bundle only loads when the `/viewer` route is visited, keeping it out of the main bundle; the default model is a standard Khronos sample (approximately 4 MB) loaded via drei's `useGLTF`.
+
+With more time, I would add DRACO compression for smaller model files, a low-power/reduced-motion static image fallback instead of the full 3D scene, and more configurator presets with multiple environment lighting options.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

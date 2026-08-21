@@ -9,6 +9,7 @@ const navItems = [
   { href: "/history", label: "History" },
   { href: "/auth", label: "Auth" },
   { href: "/health", label: "Health" },
+  { href: "/viewer", label: "Viewer" },
 ];
 
 export default function Nav() {
