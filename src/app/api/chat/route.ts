@@ -4,10 +4,18 @@ use the analyzeJobMatch tool with the job description and the resume summary to 
 giving advice.`;
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 import { streamText, tool } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
+
+// In-memory limiting resets on cold starts and is not shared across serverless instances.
+// It is sufficient for casual abuse at this project's scale; production scale needs Redis
+// or Vercel's rate limiting middleware.
+const requestTimestampsByIp = new Map();
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 const SKILL_KEYWORDS = [
   "react",
@@ -85,7 +93,34 @@ const analyzeJobMatch = tool({
   },
 });
 
+function getClientIp(req) {
+  return req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "unknown";
+}
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const timestamps = (requestTimestampsByIp.get(ip) || []).filter(
+    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS,
+  );
+
+  if (timestamps.length >= RATE_LIMIT) {
+    requestTimestampsByIp.set(ip, timestamps);
+    return true;
+  }
+
+  timestamps.push(now);
+  requestTimestampsByIp.set(ip, timestamps);
+  return false;
+}
+
 export async function POST(req) {
+  if (isRateLimited(getClientIp(req))) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment and try again." }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const body = await req.json();
   const rawMessages = body.messages || [];
 
@@ -96,6 +131,13 @@ export async function POST(req) {
     role: m.role,
     content: extractText(m),
   }));
+
+  if (modelMessages.some((message) => message.content.length > 4000)) {
+    return new Response(JSON.stringify({ error: "Please shorten your message to 4000 characters or fewer." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   const result = streamText({
     model: google("gemini-3.6-flash"),
