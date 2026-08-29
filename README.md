@@ -2,7 +2,7 @@
 
 An AI-powered tool that helps job seekers write tailored cover letters and identify which resume bullets to emphasize, based on a specific job description.
 
-**Live demo:** https://resume-tailor.vercel.app *(update once the Vercel project is renamed — see note below)*
+**Live demo:** https://resume-tailor-official.vercel.app
 
 ---
 
